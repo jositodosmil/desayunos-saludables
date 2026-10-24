@@ -45,7 +45,7 @@ class DesayunosSupabase:
         # Si el menú está vacío en Supabase, insertar los valores por defecto de una sola vez
         if not menu_dict:
             menu_defecto = [
-                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
+                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta"},
                 {
                     "dia": "Martes",
                     "desayuno": "🥪 Bocadillo/Sándwich",
@@ -56,12 +56,12 @@ class DesayunosSupabase:
                 },
                 {
                     "dia": "Jueves",
-                    "desayuno": "🥪 Bocadillo o Sándwich",
+                    "desayuno": "🥪 Bocadillo/Sándwich",
                 },
                 {
                     "dia": "Viernes",
                     "desayuno": (
-                        "🎉 ¡Viernes Especial! (Desayuno libre"
+                        "🎉 Desayuno libre"
                         " 🍇🍌)"
                     ),
                 },
