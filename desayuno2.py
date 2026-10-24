@@ -48,7 +48,7 @@ class DesayunosSupabase:
                 {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
                 {
                     "dia": "Martes",
-                    "desayuno": "🥪 Bocadillo o Sándwich",
+                    "desayuno": "🥪 Bocadillo/Sándwich",
                 },
                 {
                     "dia": "Miércoles",
