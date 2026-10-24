@@ -36,71 +36,133 @@ class DesayunosSupabase:
 
     @staticmethod
     def obtener_menu():
-        res = supabase.table("menu").select("*").execute()
-        menu_dict = {item["dia"]: item["desayuno"] for item in res.data}
-        
-        # Si el menú está vacío, insertar el menú colorido por defecto
+        try:
+            res = supabase.table("menu").select("*").execute()
+            menu_dict = {item["dia"]: item["desayuno"] for item in res.data}
+        except Exception:
+            menu_dict = {}
+
+        # Si el menú está vacío en Supabase, insertar los valores por defecto de una sola vez
         if not menu_dict:
-            menu_defecto = {
-                "Lunes": "🥛 Lácteo / 🍎 Fruta fresca",
-                "Martes": "🥪 Bocadillo o Sándwich saludable",
-                "Miércoles": "🥛 Lácteo / 🍎 Fruta fresca",
-                "Jueves": "🥪 Bocadillo o Sándwich saludable",
-                "Viernes": "🎉 ¡Viernes Especial! (Desayuno Saludable Libre 🍇🍌)"
-            }
-            DesayunosSupabase.actualizar_menu(menu_defecto)
-            return menu_defecto
+            menu_defecto = [
+                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
+                {
+                    "dia": "Martes",
+                    "desayuno": "🥪 Bocadillo o Sándwich saludable",
+                },
+                {
+                    "dia": "Miércoles",
+                    "desayuno": "🥛 Lácteo / 🍎 Fruta fresca",
+                },
+                {
+                    "dia": "Jueves",
+                    "desayuno": "🥪 Bocadillo o Sándwich saludable",
+                },
+                {
+                    "dia": "Viernes",
+                    "desayuno": (
+                        "🎉 ¡Viernes Especial! (Desayuno Saludable Libre"
+                        " 🍇🍌)"
+                    ),
+                },
+            ]
+            try:
+                supabase.table("menu").upsert(
+                    menu_defecto, on_conflict="dia"
+                ).execute()
+                menu_dict = {
+                    item["dia"]: item["desayuno"] for item in menu_defecto
+                }
+            except Exception:
+                # Si falla la escritura en Supabase, devolver el diccionario local
+                menu_dict = {
+                    item["dia"]: item["desayuno"] for item in menu_defecto
+                }
+
         return menu_dict
 
     @staticmethod
     def actualizar_menu(menu_dict):
-        for dia, desayuno in menu_dict.items():
-            supabase.table("menu").upsert({"dia": dia, "desayuno": desayuno}).execute()
+        datos_upsert = [
+            {"dia": dia, "desayuno": desayuno}
+            for dia, desayuno in menu_dict.items()
+        ]
+        supabase.table("menu").upsert(
+            datos_upsert, on_conflict="dia"
+        ).execute()
 
     @staticmethod
     def obtener_alumnos():
-        res = supabase.table("alumnos").select("id, nombre").order("nombre").execute()
-        return [(item["id"], item["nombre"]) for item in res.data]
+        try:
+            res = (
+                supabase.table("alumnos")
+                .select("id, nombre")
+                .order("nombre")
+                .execute()
+            )
+            return [(item["id"], item["nombre"]) for item in res.data]
+        except Exception:
+            return []
 
     @staticmethod
     def agregar_alumno(nombre):
         try:
             nombre_limpio = nombre.strip()
-            res = supabase.table("alumnos").insert({"nombre": nombre_limpio}).execute()
+            res = (
+                supabase.table("alumnos")
+                .insert({"nombre": nombre_limpio})
+                .execute()
+            )
             return True if res.data else False
         except Exception:
             return False
 
     @staticmethod
     def eliminar_alumno(alumno_id):
-        supabase.table("alumnos").delete().eq("id", alumno_id).execute()
+        try:
+            supabase.table("alumnos").delete().eq("id", alumno_id).execute()
+        except Exception:
+            pass
 
     @staticmethod
     def obtener_registros():
-        res = supabase.table("registro").select("*").execute()
-        registros = {}
-        for item in res.data:
-            aid = item["alumno_id"]
-            if aid not in registros:
-                registros[aid] = {}
-            registros[aid][item["dia"]] = item["estado"]
-        return registros
+        try:
+            res = supabase.table("registro").select("*").execute()
+            registros = {}
+            for item in res.data:
+                aid = item["alumno_id"]
+                if aid not in registros:
+                    registros[aid] = {}
+                registros[aid][item["dia"]] = item["estado"]
+            return registros
+        except Exception:
+            return {}
 
     @staticmethod
     def cambiar_estado_registro(alumno_id, dia, nuevo_estado):
-        if nuevo_estado == "NINGUNO":
-            supabase.table("registro").delete().eq("alumno_id", alumno_id).eq("dia", dia).execute()
-        else:
-            supabase.table("registro").upsert({
-                "alumno_id": alumno_id,
-                "dia": dia,
-                "estado": nuevo_estado
-            }).execute()
+        try:
+            if nuevo_estado == "NINGUNO":
+                supabase.table("registro").delete().eq(
+                    "alumno_id", alumno_id
+                ).eq("dia", dia).execute()
+            else:
+                supabase.table("registro").upsert(
+                    {
+                        "alumno_id": alumno_id,
+                        "dia": dia,
+                        "estado": nuevo_estado,
+                    },
+                    on_conflict="alumno_id, dia",
+                ).execute()
+        except Exception:
+            pass
 
     @staticmethod
     def resetear_registros():
-        supabase.table("registro").delete().neq("alumno_id", 0).execute()
-
+        try:
+            supabase.table("registro").delete().neq("alumno_id", 0).execute()
+        except Exception:
+            pass
 
 # ==========================================
 # GENERADOR DE INFORMES PDF
