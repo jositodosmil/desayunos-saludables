@@ -52,7 +52,7 @@ class DesayunosSupabase:
                 },
                 {
                     "dia": "Miércoles",
-                    "desayuno": "🥛 Lácteo / 🍎 Fruta fresca",
+                    "desayuno": "🥛 Lácteo / 🍎 Fruta",
                 },
                 {
                     "dia": "Jueves",
