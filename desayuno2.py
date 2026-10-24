@@ -48,7 +48,7 @@ class DesayunosSupabase:
                 {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
                 {
                     "dia": "Martes",
-                    "desayuno": "🥪 Bocadillo o Sándwich saludable",
+                    "desayuno": "🥪 Bocadillo o Sándwich",
                 },
                 {
                     "dia": "Miércoles",
@@ -56,12 +56,12 @@ class DesayunosSupabase:
                 },
                 {
                     "dia": "Jueves",
-                    "desayuno": "🥪 Bocadillo o Sándwich saludable",
+                    "desayuno": "🥪 Bocadillo o Sándwich",
                 },
                 {
                     "dia": "Viernes",
                     "desayuno": (
-                        "🎉 ¡Viernes Especial! (Desayuno Saludable Libre"
+                        "🎉 ¡Viernes Especial! (Desayuno Libre"
                         " 🍇🍌)"
                     ),
                 },
