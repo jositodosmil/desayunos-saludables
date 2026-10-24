@@ -48,7 +48,7 @@ class DesayunosSupabase:
                 {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
                 {
                     "dia": "Martes",
-                    "desayuno": "🥪 Bocadillo o Sándwich",
+                    "desayuno": "🥪 Bocadillo o Sándwich saludable",
                 },
                 {
                     "dia": "Miércoles",
@@ -56,12 +56,12 @@ class DesayunosSupabase:
                 },
                 {
                     "dia": "Jueves",
-                    "desayuno": "🥪 Bocadillo o Sándwich",
+                    "desayuno": "🥪 Bocadillo o Sándwich saludable",
                 },
                 {
                     "dia": "Viernes",
                     "desayuno": (
-                        "🎉 ¡Viernes Especial! (Desayuno Libre"
+                        "🎉 ¡Viernes Especial! (Desayuno Saludable Libre"
                         " 🍇🍌)"
                     ),
                 },
@@ -83,14 +83,19 @@ class DesayunosSupabase:
 
     @staticmethod
     def actualizar_menu(menu_dict):
-        datos_upsert = [
-            {"dia": dia, "desayuno": desayuno}
-            for dia, desayuno in menu_dict.items()
-        ]
-        supabase.table("menu").upsert(
-            datos_upsert, on_conflict="dia"
-        ).execute()
-
+        try:
+            for dia, desayuno in menu_dict.items():
+                supabase.table("menu").upsert(
+                    {"dia": dia, "desayuno": desayuno},
+                    on_conflict="dia"
+                ).execute()
+        except Exception as e:
+            # Si falla el upsert masivo, intenta una actualización directa por registro
+            for dia, desayuno in menu_dict.items():
+                try:
+                    supabase.table("menu").update({"desayuno": desayuno}).eq("dia", dia).execute()
+                except Exception:
+                    pass
     @staticmethod
     def obtener_alumnos():
         try:
