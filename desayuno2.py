@@ -427,44 +427,48 @@ with tab2:
     st.subheader("🏆 Podio de los Mejores Desayunadores")
     st.caption("¡Recompensamos el esfuerzo y la constancia de comer saludable!")
 
-    # Calcular puntuaciones por alumno
-    puntuaciones = []
-    for aid, nombre in alumnos:
-        puntos = 0
-        for dia in dias:
-            if registros.get(aid, {}).get(dia) == "EXITO":
-                puntos += 1
-        puntuaciones.append({"Alumno": nombre, "Desayunos Saludables ⭐": puntos})
-
-    df_ranking = pd.DataFrame(puntuaciones).sort_values(by="Desayunos Saludables ⭐", ascending=False)
-
-    if not df_ranking.empty and df_ranking["Desayunos Saludables ⭐"].max() > 0:
-        # Mostrar el Podio TOP 3
-        top_alumnos = df_ranking[df_ranking["Desayunos Saludables ⭐"] > 0].head(3).values.tolist()
-
-        col_p1, col_p2, col_p3 = st.columns(3)
-
-        medallas = ["🥇 1º Puesto (ORO)", "🥈 2º Puesto (PLATA)", "🥉 3º Puesto (BRONCE)"]
-        colores = ["#FFF176", "#E0E0E0", "#FFCC80"]
-
-        cols_podio = [col_p1, col_p2, col_p3]
-
-        for idx, (nombre, puntos) in enumerate(top_alumnos):
-            with cols_podio[idx]:
-                st.markdown(
-                    f"""
-                    <div style="background-color: {colores[idx]}; padding: 15px; border-radius: 10px; text-align: center; border: 2px solid #888;">
-                        <h3>{medallas[idx]}</h3>
-                        <h2>{nombre}</h2>
-                        <p style="font-size: 20px;"><b>{puntos} ⭐ Conseguidos</b></p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
-        st.write("")
-        st.divider()
-        st.subheader("📋 Clasificación General de la Clase")
-        st.dataframe(df_ranking, use_container_width=True, hide_index=True)
+    if not alumnos:
+        st.info("Aún no hay alumnos registrados. Añádelos en la barra lateral para ver la clasificación.")
     else:
-        st.info("Aún no hay puntos registrados para mostrar el podio. ¡Empieza a marcar los desayunos de la semana!")
+        # Calcular puntuaciones por alumno
+        puntuaciones = []
+        for aid, nombre in alumnos:
+            puntos = 0
+            for dia in dias:
+                if registros.get(aid, {}).get(dia) == "EXITO":
+                    puntos += 1
+            puntuaciones.append({"Alumno": nombre, "Desayunos Saludables ⭐": puntos})
+
+        df_ranking = pd.DataFrame(puntuaciones)
+
+        # Comprobar que la columna existe y hay datos antes de ordenar
+        if "Desayunos Saludables ⭐" in df_ranking.columns and df_ranking["Desayunos Saludables ⭐"].max() > 0:
+            df_ranking = df_ranking.sort_values(by="Desayunos Saludables ⭐", ascending=False)
+            
+            # Mostrar el Podio TOP 3
+            top_alumnos = df_ranking[df_ranking["Desayunos Saludables ⭐"] > 0].head(3).values.tolist()
+
+            col_p1, col_p2, col_p3 = st.columns(3)
+            colores = ["#FFF176", "#E0E0E0", "#FFCC80"]
+            medallas = ["🥇 1º Puesto (ORO)", "🥈 2º Puesto (PLATA)", "🥉 3º Puesto (BRONCE)"]
+            cols_podio = [col_p1, col_p2, col_p3]
+
+            for idx, (nombre, puntos) in enumerate(top_alumnos):
+                with cols_podio[idx]:
+                    st.markdown(
+                        f"""
+                        <div style="background-color: {colores[idx]}; padding: 15px; border-radius: 10px; text-align: center; border: 2px solid #888;">
+                            <h3>{medallas[idx]}</h3>
+                            <h2>{nombre}</h2>
+                            <p style="font-size: 20px;"><b>{puntos} ⭐ Conseguidos</b></p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+            st.write("")
+            st.divider()
+            st.subheader("📋 Clasificación General de la Clase")
+            st.dataframe(df_ranking, use_container_width=True, hide_index=True)
+        else:
+            st.info("Aún no hay puntos acumulados en la semana. ¡Empieza a marcar los desayunos en la primera pestaña!")
