@@ -37,7 +37,20 @@ class DesayunosSupabase:
     @staticmethod
     def obtener_menu():
         res = supabase.table("menu").select("*").execute()
-        return {item["dia"]: item["desayuno"] for item in res.data}
+        menu_dict = {item["dia"]: item["desayuno"] for item in res.data}
+        
+        # Si el menú está vacío, insertar el menú colorido por defecto
+        if not menu_dict:
+            menu_defecto = {
+                "Lunes": "🥛 Lácteo / 🍎 Fruta fresca",
+                "Martes": "🥪 Bocadillo o Sándwich saludable",
+                "Miércoles": "🥛 Lácteo / 🍎 Fruta fresca",
+                "Jueves": "🥪 Bocadillo o Sándwich saludable",
+                "Viernes": "🎉 ¡Viernes Especial! (Desayuno Saludable Libre 🍇🍌)"
+            }
+            DesayunosSupabase.actualizar_menu(menu_defecto)
+            return menu_defecto
+        return menu_dict
 
     @staticmethod
     def actualizar_menu(menu_dict):
@@ -52,8 +65,9 @@ class DesayunosSupabase:
     @staticmethod
     def agregar_alumno(nombre):
         try:
-            supabase.table("alumnos").insert({"nombre": nombre}).execute()
-            return True
+            nombre_limpio = nombre.strip()
+            res = supabase.table("alumnos").insert({"nombre": nombre_limpio}).execute()
+            return True if res.data else False
         except Exception:
             return False
 
@@ -85,12 +99,11 @@ class DesayunosSupabase:
 
     @staticmethod
     def resetear_registros():
-        # Elimina todas las entradas del registro histórico
         supabase.table("registro").delete().neq("alumno_id", 0).execute()
 
 
 # ==========================================
-# GENERADOR DE INFORMES PDF CON FILTRO DE FECHAS
+# GENERADOR DE INFORMES PDF
 # ==========================================
 def generar_pdf_bytes(db, dias, fecha_inicio, fecha_fin):
     if not HAS_REPORTLAB:
@@ -257,7 +270,7 @@ st.divider()
 with st.sidebar:
     st.header("⚙️ Panel de Control")
 
-    # Exportación PDF con Selección de Fechas
+    # Exportación PDF
     st.subheader("🖨️ Exportar Registro PDF")
     col_f1, col_f2 = st.columns(2)
     fecha_inicio_pdf = col_f1.date_input("Desde:", value=date.today())
@@ -266,7 +279,7 @@ with st.sidebar:
     pdf_bytes = generar_pdf_bytes(db, dias, fecha_inicio_pdf, fecha_fin_pdf)
     if pdf_bytes:
         st.download_button(
-            label="📥 Descargar PDF de las fechas",
+            label="📥 Descargar PDF",
             data=pdf_bytes,
             file_name=f"Registro_Desayunos_{fecha_inicio_pdf.strftime('%d%m')}_al_{fecha_fin_pdf.strftime('%d%m')}.pdf",
             mime="application/pdf",
@@ -275,51 +288,51 @@ with st.sidebar:
 
     st.divider()
 
-    # Gestión del Menú
-    st.subheader("📋 Menú Semanal")
+    # Edición del Menú
+    st.subheader("📋 Configurar Menú")
     menu_actual = db.obtener_menu()
     nuevo_menu = {}
     with st.form("form_menu"):
         for dia in dias:
             nuevo_menu[dia] = st.text_input(f"Día {dia}", value=menu_actual.get(dia, ""))
-        btn_actualizar_menu = st.form_submit_button("💾 Guardar Menú")
+        btn_actualizar_menu = st.form_submit_button("💾 Actualizar Menú")
         if btn_actualizar_menu:
             db.actualizar_menu(nuevo_menu)
-            st.success("¡Menú actualizado!")
+            st.success("¡Menú guardado!")
             st.rerun()
 
     st.divider()
 
     # Gestión de Alumnado
-    st.subheader("👦👧 Gestión de Alumnos")
-    nuevo_alumno = st.text_input("Añadir nuevo/a alumno/a:")
-    if st.button("➕ Añadir Alumno", use_container_width=True):
+    st.subheader("👦👧 Alumnado de Clase")
+    nuevo_alumno = st.text_input("Nombre del nuevo alumno/a:")
+    if st.button("➕ Añadir a Clase", use_container_width=True):
         if nuevo_alumno.strip():
             if db.agregar_alumno(nuevo_alumno.strip()):
-                st.success(f"¡{nuevo_alumno} añadido/a!")
+                st.success(f"¡{nuevo_alumno} registrado/a!")
                 st.rerun()
             else:
-                st.warning("Ya existe un alumno con ese nombre.")
+                st.warning("No se pudo añadir (es posible que ya exista).")
 
     st.write("---")
     alumnos_lista = db.obtener_alumnos()
     if alumnos_lista:
         opciones_eliminar = {nombre: aid for aid, nombre in alumnos_lista}
         alumno_a_borrar = st.selectbox("Eliminar alumno:", list(opciones_eliminar.keys()))
-        if st.button("🗑️ Eliminar Seleccionado", use_container_width=True):
+        if st.button("🗑️ Eliminar de la Lista", use_container_width=True):
             db.eliminar_alumno(opciones_eliminar[alumno_a_borrar])
             st.success(f"Alumno {alumno_a_borrar} eliminado.")
             st.rerun()
 
     st.divider()
 
-    # Opción de Reseteo para Nuevos Torneos/Trimestres
+    # Reseteo
     st.subheader("⚠️ Zona de Reinicio")
     with st.expander("Resetear registros"):
-        st.warning("Esto borrará las marcas semanales para empezar un nuevo torneo.")
+        st.warning("Borra las marcas semanales para iniciar un nuevo torneo.")
         if st.button("🔥 Reiniciar Marcadores", type="primary", use_container_width=True):
             db.resetear_registros()
-            st.success("¡Marcadores reiniciados a cero!")
+            st.success("¡Marcadores reiniciados!")
             st.rerun()
 
 
@@ -330,7 +343,7 @@ alumnos = db.obtener_alumnos()
 registros = db.obtener_registros()
 menu_semanal = db.obtener_menu()
 
-# PESTAÑA 1: REGISTRO
+# PESTAÑA 1: REGISTRO DIARIO
 with tab1:
     total_desayunos_logrados = 0
     total_posibles = len(alumnos) * len(dias) if alumnos else 1
@@ -343,7 +356,7 @@ with tab1:
     porcentaje_exito = int((total_desayunos_logrados / total_posibles) * 100)
 
     col_m1, col_m2, col_m3 = st.columns(3)
-    col_m1.metric("🏆 Desayunos Saludables de la Clase", f"{total_desayunos_logrados} ⭐", delta=f"{porcentaje_exito}% de la semana")
+    col_m1.metric("🏆 Desayunos Saludables Conseguidos", f"{total_desayunos_logrados} ⭐", delta=f"{porcentaje_exito}% de la clase")
     col_m2.metric("👦👧 Alumnos Registrados", len(alumnos))
     col_m3.metric("📅 Día Activo", f"{dias[datetime.now().weekday() if datetime.now().weekday() < 5 else 0]}")
 
@@ -358,7 +371,7 @@ with tab1:
     st.subheader("📊 Control Semanal del Alumnado")
 
     if not alumnos:
-        st.info("No hay alumnos registrados. Añádelos en la barra lateral.")
+        st.info("No hay alumnos registrados. Puedes añadir a tus alumnos desde el panel lateral izquierdo en '👦👧 Alumnado de Clase'.")
     else:
         cols_header = st.columns([2, 2, 2, 2, 2, 2])
         cols_header[0].markdown("**Alumno / a**")
@@ -428,9 +441,8 @@ with tab2:
     st.caption("¡Recompensamos el esfuerzo y la constancia de comer saludable!")
 
     if not alumnos:
-        st.info("Aún no hay alumnos registrados. Añádelos en la barra lateral para ver la clasificación.")
+        st.info("Aún no hay alumnos registrados en la clase. Añádelos en la barra lateral para generar la clasificación.")
     else:
-        # Calcular puntuaciones por alumno
         puntuaciones = []
         for aid, nombre in alumnos:
             puntos = 0
@@ -441,11 +453,9 @@ with tab2:
 
         df_ranking = pd.DataFrame(puntuaciones)
 
-        # Comprobar que la columna existe y hay datos antes de ordenar
         if "Desayunos Saludables ⭐" in df_ranking.columns and df_ranking["Desayunos Saludables ⭐"].max() > 0:
             df_ranking = df_ranking.sort_values(by="Desayunos Saludables ⭐", ascending=False)
             
-            # Mostrar el Podio TOP 3
             top_alumnos = df_ranking[df_ranking["Desayunos Saludables ⭐"] > 0].head(3).values.tolist()
 
             col_p1, col_p2, col_p3 = st.columns(3)
