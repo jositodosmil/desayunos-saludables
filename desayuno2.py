@@ -61,7 +61,7 @@ class DesayunosSupabase:
                 {
                     "dia": "Viernes",
                     "desayuno": (
-                        "🎉 ¡Desayuno Libre!"
+                        "🎉 ¡Libre!"
                         " 🍇🍌)"
                     ),
                 },
