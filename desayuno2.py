@@ -45,23 +45,24 @@ class DesayunosSupabase:
         # Si el menú está vacío en Supabase, insertar los valores por defecto de una sola vez
         if not menu_dict:
             menu_defecto = [
-                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta"},
+                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
                 {
                     "dia": "Martes",
-                    "desayuno": "🥪 Bocadillo/Sándwich",
+                    "desayuno": "🥪 Bocadillo o Sándwich saludable",
                 },
                 {
                     "dia": "Miércoles",
-                    "desayuno": "🥛 Lácteo / 🍎 Fruta",
+                    "desayuno": "🥛 Lácteo / 🍎 Fruta fresca",
                 },
                 {
                     "dia": "Jueves",
-                    "desayuno": "🥪 Bocadillo/Sándwich",
+                    "desayuno": "🥪 Bocadillo o Sándwich saludable",
                 },
                 {
                     "dia": "Viernes",
                     "desayuno": (
-                        "🎉 Desayuno libre"
+                        "🎉 ¡Viernes Especial! (Desayuno Saludable Libre"
+                        " 🍇🍌)"
                     ),
                 },
             ]
@@ -150,6 +151,7 @@ class DesayunosSupabase:
                     "alumno_id", alumno_id
                 ).eq("dia", dia).execute()
             else:
+                # Intento de upsert directo
                 supabase.table("registro").upsert(
                     {
                         "alumno_id": alumno_id,
@@ -159,8 +161,22 @@ class DesayunosSupabase:
                     on_conflict="alumno_id, dia",
                 ).execute()
         except Exception:
-            pass
-
+            # Si la clave primaria de Supabase falla, hacemos un borrado e inserción limpia
+            try:
+                supabase.table("registro").delete().eq(
+                    "alumno_id", alumno_id
+                ).eq("dia", dia).execute()
+                if nuevo_estado != "NINGUNO":
+                    supabase.table("registro").insert(
+                        {
+                            "alumno_id": alumno_id,
+                            "dia": dia,
+                            "estado": nuevo_estado,
+                        }
+                    ).execute()
+            except Exception:
+                pass
+                
     @staticmethod
     def resetear_registros():
         try:
