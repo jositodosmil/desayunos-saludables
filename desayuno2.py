@@ -45,23 +45,23 @@ class DesayunosSupabase:
         # Si el menú está vacío en Supabase, insertar los valores por defecto de una sola vez
         if not menu_dict:
             menu_defecto = [
-                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
+                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta"},
                 {
                     "dia": "Martes",
-                    "desayuno": "🥪 Bocadillo o Sándwich saludable",
+                    "desayuno": "🥪 Bocadillo/Sándwich",
                 },
                 {
                     "dia": "Miércoles",
-                    "desayuno": "🥛 Lácteo / 🍎 Fruta fresca",
+                    "desayuno": "🥛 Lácteo / 🍎 Fruta",
                 },
                 {
                     "dia": "Jueves",
-                    "desayuno": "🥪 Bocadillo o Sándwich saludable",
+                    "desayuno": "🥪 Bocadillo/Sándwich",
                 },
                 {
                     "dia": "Viernes",
                     "desayuno": (
-                        "🎉 ¡Viernes Especial! (Desayuno Saludable Libre"
+                        "🎉 ¡Desayuno Libre!"
                         " 🍇🍌)"
                     ),
                 },
@@ -502,6 +502,7 @@ with tab1:
 
         st.divider()
 
+        # --- GRÁFICO DE PROGRESO CON ORDEN CRONOLÓGICO CORREGIDO ---
         st.subheader("📈 Progreso Diario de la Clase")
         conteo_dias = {dia: 0 for dia in dias}
         for aid, _ in alumnos:
@@ -509,13 +510,25 @@ with tab1:
                 if registros.get(aid, {}).get(dia) == "EXITO":
                     conteo_dias[dia] += 1
 
-        df_progreso = pd.DataFrame({
-            "Día": list(conteo_dias.keys()),
-            "Desayunos Saludables Logrados": list(conteo_dias.values())
-        })
+        df_progreso = pd.DataFrame(
+            {
+                "Día": list(conteo_dias.keys()),
+                "Desayunos Saludables Logrados": list(conteo_dias.values()),
+            }
+        )
 
-        st.bar_chart(df_progreso, x="Día", y="Desayunos Saludables Logrados", color="#4CAF50")
+        # Forzar el orden cronológico de los días (Lunes a Viernes) en lugar del orden alfabético
+        df_progreso["Día"] = pd.Categorical(
+            df_progreso["Día"], categories=dias, ordered=True
+        )
+        df_progreso = df_progreso.sort_values("Día")
 
+        st.bar_chart(
+            df_progreso,
+            x="Día",
+            y="Desayunos Saludables Logrados",
+            color="#4CAF50",
+        )
 
 # PESTAÑA 2: RANKING Y PODIO
 with tab2:
