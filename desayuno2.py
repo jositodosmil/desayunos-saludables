@@ -48,7 +48,7 @@ class DesayunosSupabase:
                 {"dia": "Martes", "desayuno": "🥪 Bocadillo/Sándwich"},
                 {"dia": "Miércoles", "desayuno": "🥛 Lácteo / 🍎 Fruta"},
                 {"dia": "Jueves", "desayuno": "🥪 Bocadillo/Sándwich"},
-                {"dia": "Viernes", "desayuno": "🎉¡Desayuno Libre 🍇🍌!"}
+                {"dia": "Viernes", "desayuno": "🎉Desayuno Libre 🍇🍌"}
             ]
             try:
                 supabase.table("menu").upsert(menu_defecto, on_conflict="dia").execute()
