@@ -44,11 +44,11 @@ class DesayunosSupabase:
 
         if not menu_dict:
             menu_defecto = [
-                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
-                {"dia": "Martes", "desayuno": "🥪 Bocadillo o Sándwich saludable"},
-                {"dia": "Miércoles", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
-                {"dia": "Jueves", "desayuno": "🥪 Bocadillo o Sándwich saludable"},
-                {"dia": "Viernes", "desayuno": "🎉 ¡Viernes Especial! (Desayuno Saludable Libre 🍇🍌)"}
+                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta"},
+                {"dia": "Martes", "desayuno": "🥪 Bocadillo/Sándwich"},
+                {"dia": "Miércoles", "desayuno": "🥛 Lácteo / 🍎 Fruta"},
+                {"dia": "Jueves", "desayuno": "🥪 Bocadillo/Sándwich"},
+                {"dia": "Viernes", "desayuno": "🎉 ¡Viernes Especial! (Libre 🍇🍌)"}
             ]
             try:
                 supabase.table("menu").upsert(menu_defecto, on_conflict="dia").execute()
