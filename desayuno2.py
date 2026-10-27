@@ -42,69 +42,34 @@ class DesayunosSupabase:
         except Exception:
             menu_dict = {}
 
-        # Si el menú está vacío en Supabase, insertar los valores por defecto de una sola vez
         if not menu_dict:
             menu_defecto = [
-                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta"},
-                {
-                    "dia": "Martes",
-                    "desayuno": "🥪 Bocadillo/Sándwich",
-                },
-                {
-                    "dia": "Miércoles",
-                    "desayuno": "🥛 Lácteo / 🍎 Fruta",
-                },
-                {
-                    "dia": "Jueves",
-                    "desayuno": "🥪 Bocadillo/Sándwich",
-                },
-                {
-                    "dia": "Viernes",
-                    "desayuno": (
-                        "🎉 ¡Libre!"
-                        " 🍇🍌)"
-                    ),
-                },
+                {"dia": "Lunes", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
+                {"dia": "Martes", "desayuno": "🥪 Bocadillo o Sándwich saludable"},
+                {"dia": "Miércoles", "desayuno": "🥛 Lácteo / 🍎 Fruta fresca"},
+                {"dia": "Jueves", "desayuno": "🥪 Bocadillo o Sándwich saludable"},
+                {"dia": "Viernes", "desayuno": "🎉 ¡Viernes Especial! (Desayuno Saludable Libre 🍇🍌)"}
             ]
             try:
-                supabase.table("menu").upsert(
-                    menu_defecto, on_conflict="dia"
-                ).execute()
-                menu_dict = {
-                    item["dia"]: item["desayuno"] for item in menu_defecto
-                }
+                supabase.table("menu").upsert(menu_defecto, on_conflict="dia").execute()
+                menu_dict = {item["dia"]: item["desayuno"] for item in menu_defecto}
             except Exception:
-                # Si falla la escritura en Supabase, devolver el diccionario local
-                menu_dict = {
-                    item["dia"]: item["desayuno"] for item in menu_defecto
-                }
+                menu_dict = {item["dia"]: item["desayuno"] for item in menu_defecto}
 
         return menu_dict
 
     @staticmethod
     def actualizar_menu(menu_dict):
         try:
-            for dia, desayuno in menu_dict.items():
-                supabase.table("menu").upsert(
-                    {"dia": dia, "desayuno": desayuno},
-                    on_conflict="dia"
-                ).execute()
-        except Exception as e:
-            # Si falla el upsert masivo, intenta una actualización directa por registro
-            for dia, desayuno in menu_dict.items():
-                try:
-                    supabase.table("menu").update({"desayuno": desayuno}).eq("dia", dia).execute()
-                except Exception:
-                    pass
+            datos_upsert = [{"dia": dia, "desayuno": desayuno} for dia, desayuno in menu_dict.items()]
+            supabase.table("menu").upsert(datos_upsert, on_conflict="dia").execute()
+        except Exception:
+            pass
+
     @staticmethod
     def obtener_alumnos():
         try:
-            res = (
-                supabase.table("alumnos")
-                .select("id, nombre")
-                .order("nombre")
-                .execute()
-            )
+            res = supabase.table("alumnos").select("id, nombre").order("nombre").execute()
             return [(item["id"], item["nombre"]) for item in res.data]
         except Exception:
             return []
@@ -113,11 +78,7 @@ class DesayunosSupabase:
     def agregar_alumno(nombre):
         try:
             nombre_limpio = nombre.strip()
-            res = (
-                supabase.table("alumnos")
-                .insert({"nombre": nombre_limpio})
-                .execute()
-            )
+            res = supabase.table("alumnos").insert({"nombre": nombre_limpio}).execute()
             return True if res.data else False
         except Exception:
             return False
@@ -138,51 +99,36 @@ class DesayunosSupabase:
                 aid = item["alumno_id"]
                 if aid not in registros:
                     registros[aid] = {}
-                registros[aid][item["dia"]] = item["estado"]
+                registros[aid][item["dia"]] = {
+                    "estado": item.get("estado", "NINGUNO"),
+                    "calidad": item.get("calidad", False)
+                }
             return registros
         except Exception:
             return {}
 
     @staticmethod
-    def cambiar_estado_registro(alumno_id, dia, nuevo_estado):
+    def cambiar_estado_registro(alumno_id, dia, nuevo_estado, calidad=False):
         try:
             if nuevo_estado == "NINGUNO":
-                supabase.table("registro").delete().eq(
-                    "alumno_id", alumno_id
-                ).eq("dia", dia).execute()
+                supabase.table("registro").delete().eq("alumno_id", alumno_id).eq("dia", dia).execute()
             else:
-                # Intento de upsert directo
-                supabase.table("registro").upsert(
-                    {
-                        "alumno_id": alumno_id,
-                        "dia": dia,
-                        "estado": nuevo_estado,
-                    },
-                    on_conflict="alumno_id, dia",
-                ).execute()
+                supabase.table("registro").upsert({
+                    "alumno_id": alumno_id,
+                    "dia": dia,
+                    "estado": nuevo_estado,
+                    "calidad": calidad
+                }, on_conflict="alumno_id, dia").execute()
         except Exception:
-            # Si la clave primaria de Supabase falla, hacemos un borrado e inserción limpia
-            try:
-                supabase.table("registro").delete().eq(
-                    "alumno_id", alumno_id
-                ).eq("dia", dia).execute()
-                if nuevo_estado != "NINGUNO":
-                    supabase.table("registro").insert(
-                        {
-                            "alumno_id": alumno_id,
-                            "dia": dia,
-                            "estado": nuevo_estado,
-                        }
-                    ).execute()
-            except Exception:
-                pass
-                
+            pass
+
     @staticmethod
     def resetear_registros():
         try:
             supabase.table("registro").delete().neq("alumno_id", 0).execute()
         except Exception:
             pass
+
 
 # ==========================================
 # GENERADOR DE INFORMES PDF
@@ -282,7 +228,7 @@ def generar_pdf_bytes(db, dias, fecha_inicio, fecha_fin):
 
     # Registro Alumnos
     elements.append(Paragraph("Control de Asistencia y Desayunos", h2_style))
-    headers = ["Alumno / a"] + dias + ["Total Consecución"]
+    headers = ["Alumno / a"] + dias + ["Puntuación Total"]
     table_data = [[Paragraph(f"<b>{h}</b>", cell_header_style) for h in headers]]
 
     alumnos = db.obtener_alumnos()
@@ -291,22 +237,28 @@ def generar_pdf_bytes(db, dias, fecha_inicio, fecha_fin):
 
     for alumno_id, nombre in alumnos:
         row = [Paragraph(f"<b>{nombre}</b>", ParagraphStyle("N", fontName="Helvetica", fontSize=9, alignment=0))]
-        exitos_alumno = 0
+        puntos_alumno = 0
 
         for dia in dias:
-            est = registros.get(alumno_id, {}).get(dia, "NINGUNO")
+            reg_dia = registros.get(alumno_id, {}).get(dia, {"estado": "NINGUNO", "calidad": False})
+            est = reg_dia.get("estado", "NINGUNO")
+            es_calidad = reg_dia.get("calidad", False)
+
             if est == "EXITO":
-                txt = "<font color='#2E7D32'><b>LOGRADO</b></font>"
-                exitos_alumno += 1
+                puntos_alumno += 1
                 totales_exito_clase += 1
+                if es_calidad:
+                    puntos_alumno += 1
+                    txt = "<font color='#2E7D32'><b>LOGRADO ⭐ (+1 🥇)</b></font>"
+                else:
+                    txt = "<font color='#2E7D32'><b>LOGRADO ⭐</b></font>"
             elif est == "NO_TRAIDO":
                 txt = "<font color='#C62828'><b>NO TRAÍDO</b></font>"
             else:
                 txt = "<font color='#9E9E9E'>-</font>"
             row.append(Paragraph(txt, cell_text_style))
 
-        pct = f"{exitos_alumno}/{len(dias)} ({int(exitos_alumno/len(dias)*100)}%)"
-        row.append(Paragraph(f"<b>{pct}</b>", cell_text_style))
+        row.append(Paragraph(f"<b>{puntos_alumno} Pts</b>", cell_text_style))
         table_data.append(row)
 
     col_widths = [160] + [100] * 5 + [120]
@@ -328,7 +280,7 @@ def generar_pdf_bytes(db, dias, fecha_inicio, fecha_fin):
     elements.append(t_registro)
 
     elements.append(Spacer(1, 15))
-    resumen_text = f"<b>Resumen del periodo:</b> Se han alcanzado un total de <b>{totales_exito_clase}</b> desayunos saludables en la clase."
+    resumen_text = f"<b>Resumen del periodo:</b> Se han alcanzado un total de <b>{totales_exito_clase}</b> desayunos saludables cumplidos en la clase."
     elements.append(Paragraph(resumen_text, ParagraphStyle("Res", fontName="Helvetica", fontSize=10, textColor=colors.HexColor("#333333"))))
 
     doc.build(elements)
@@ -428,21 +380,35 @@ menu_semanal = db.obtener_menu()
 # PESTAÑA 1: REGISTRO DIARIO
 with tab1:
     total_desayunos_logrados = 0
+    total_puntos_calidad = 0
     total_posibles = len(alumnos) * len(dias) if alumnos else 1
 
     for aid, _ in alumnos:
         for dia in dias:
-            if registros.get(aid, {}).get(dia) == "EXITO":
+            reg_dia = registros.get(aid, {}).get(dia, {"estado": "NINGUNO", "calidad": False})
+            if reg_dia.get("estado") == "EXITO":
                 total_desayunos_logrados += 1
+                if reg_dia.get("calidad"):
+                    total_puntos_calidad += 1
 
     porcentaje_exito = int((total_desayunos_logrados / total_posibles) * 100)
 
     col_m1, col_m2, col_m3 = st.columns(3)
-    col_m1.metric("🏆 Desayunos Saludables Conseguidos", f"{total_desayunos_logrados} ⭐", delta=f"{porcentaje_exito}% de la clase")
-    col_m2.metric("👦👧 Alumnos Registrados", len(alumnos))
+    col_m1.metric("🏆 Desayunos Cumplidos", f"{total_desayunos_logrados} ⭐", delta=f"{porcentaje_exito}% de la clase")
+    col_m2.metric("🥇 Puntos Extra Calidad Top", f"{total_puntos_calidad} 🌟", delta="Desempate nutricional")
     col_m3.metric("📅 Día Activo", f"{dias[datetime.now().weekday() if datetime.now().weekday() < 5 else 0]}")
 
     st.write("")
+    
+    # Guía Pedagógica Nutricional desplegable
+    with st.expander("💡 ¿Cómo otorgar el Punto de Calidad Nutricional (+1 🥇)?"):
+        st.markdown("""
+        * **🥛 Día de Lácteos:** Otorgar **+1 🥇** si trae yogur natural/griego sin azúcar o leche en lugar de batidos o lácteos azucarados.
+        * **🍎 Día de Fruta:** Otorgar **+1 🥇** si trae fruta fresca entera de temporada en lugar de zumos o fruta procesada.
+        * **🥪 Día de Bocadillo:** Otorgar **+1 🥇** si trae pan integral con ingredientes saludables (aceite, tomate, queso, atún) en lugar de pan de molde blanco o embutidos.
+        * **🎉 Todos los que cumplan la máxima calidad pueden recibir el punto extra.**
+        """)
+
     st.subheader("📋 Menú Establecido para esta Semana")
     cols_menu = st.columns(5)
     for i, dia in enumerate(dias):
@@ -453,7 +419,7 @@ with tab1:
     st.subheader("📊 Control Semanal del Alumnado")
 
     if not alumnos:
-        st.info("No hay alumnos registrados. Puedes añadir a tus alumnos desde el panel lateral izquierdo en '👦👧 Alumnado de Clase'.")
+        st.info("No hay alumnos registrados. Puedes añadir a tus alumnos desde el panel lateral izquierdo.")
     else:
         cols_header = st.columns([2, 2, 2, 2, 2, 2])
         cols_header[0].markdown("**Alumno / a**")
@@ -475,10 +441,15 @@ with tab1:
             exitos_semana = 0
 
             for j, dia in enumerate(dias):
-                estado_db = registros.get(alumno_id, {}).get(dia, "NINGUNO")
+                reg_dia = registros.get(alumno_id, {}).get(dia, {"estado": "NINGUNO", "calidad": False})
+                estado_db = reg_dia.get("estado", "NINGUNO")
+                calidad_db = reg_dia.get("calidad", False)
+                
                 estado_label = mapa_estado.get(estado_db, "➖ Sin marcar")
 
-                nuevo_label = cols_fila[j + 1].selectbox(
+                col_celda = cols_fila[j + 1]
+                
+                nuevo_label = col_celda.selectbox(
                     label=f"{nombre}_{dia}",
                     options=opciones_estado,
                     index=opciones_estado.index(estado_label),
@@ -487,8 +458,19 @@ with tab1:
                 )
 
                 nuevo_estado_db = mapa_inverso[nuevo_label]
-                if nuevo_estado_db != estado_db:
-                    db.cambiar_estado_registro(alumno_id, dia, nuevo_estado_db)
+
+                # Si el desayuno está logrado, mostramos la casilla para el Punto de Calidad
+                nueva_calidad = calidad_db
+                if nuevo_estado_db == "EXITO":
+                    nueva_calidad = col_celda.checkbox(
+                        "🥇 +1 Calidad",
+                        value=calidad_db,
+                        key=f"cal_{alumno_id}_{dia}"
+                    )
+
+                # Si cambia el estado o el punto de calidad, guardamos
+                if nuevo_estado_db != estado_db or nueva_calidad != calidad_db:
+                    db.cambiar_estado_registro(alumno_id, dia, nuevo_estado_db, nueva_calidad)
                     st.rerun()
 
                 if nuevo_estado_db == "EXITO":
@@ -502,70 +484,80 @@ with tab1:
 
         st.divider()
 
-        # --- GRÁFICO DE PROGRESO CON ORDEN CRONOLÓGICO CORREGIDO ---
+        # --- GRÁFICO DE PROGRESO CON ORDEN CRONOLÓGICO Y CALIDAD ---
         st.subheader("📈 Progreso Diario de la Clase")
         conteo_dias = {dia: 0 for dia in dias}
         for aid, _ in alumnos:
             for dia in dias:
-                if registros.get(aid, {}).get(dia) == "EXITO":
+                reg = registros.get(aid, {}).get(dia, {})
+                if reg.get("estado") == "EXITO":
                     conteo_dias[dia] += 1
 
-        df_progreso = pd.DataFrame(
-            {
-                "Día": list(conteo_dias.keys()),
-                "Desayunos Saludables Logrados": list(conteo_dias.values()),
-            }
-        )
+        df_progreso = pd.DataFrame({
+            "Día": list(conteo_dias.keys()),
+            "Desayunos Saludables Logrados": list(conteo_dias.values())
+        })
 
-        # Forzar el orden cronológico de los días (Lunes a Viernes) en lugar del orden alfabético
-        df_progreso["Día"] = pd.Categorical(
-            df_progreso["Día"], categories=dias, ordered=True
-        )
+        df_progreso["Día"] = pd.Categorical(df_progreso["Día"], categories=dias, ordered=True)
         df_progreso = df_progreso.sort_values("Día")
 
-        st.bar_chart(
-            df_progreso,
-            x="Día",
-            y="Desayunos Saludables Logrados",
-            color="#4CAF50",
-        )
+        st.bar_chart(df_progreso, x="Día", y="Desayunos Saludables Logrados", color="#4CAF50")
+
 
 # PESTAÑA 2: RANKING Y PODIO
 with tab2:
     st.subheader("🏆 Podio de los Mejores Desayunadores")
-    st.caption("¡Recompensamos el esfuerzo y la constancia de comer saludable!")
+    st.caption("Clasificación por Días Cumplidos (⭐) y Puntos de Calidad Nutricional (🥇)")
 
     if not alumnos:
         st.info("Aún no hay alumnos registrados en la clase. Añádelos en la barra lateral para generar la clasificación.")
     else:
         puntuaciones = []
         for aid, nombre in alumnos:
-            puntos = 0
+            dias_cumplidos = 0
+            puntos_calidad = 0
             for dia in dias:
-                if registros.get(aid, {}).get(dia) == "EXITO":
-                    puntos += 1
-            puntuaciones.append({"Alumno": nombre, "Desayunos Saludables ⭐": puntos})
+                reg = registros.get(aid, {}).get(dia, {})
+                if reg.get("estado") == "EXITO":
+                    dias_cumplidos += 1
+                    if reg.get("calidad"):
+                        puntos_calidad += 1
+            
+            puntuacion_total = dias_cumplidos + puntos_calidad
+            puntuaciones.append({
+                "Alumno": nombre,
+                "Días Cumplidos ⭐": dias_cumplidos,
+                "Puntos Calidad 🥇": puntos_calidad,
+                "Puntuación Total 🏆": puntuacion_total
+            })
 
         df_ranking = pd.DataFrame(puntuaciones)
 
-        if "Desayunos Saludables ⭐" in df_ranking.columns and df_ranking["Desayunos Saludables ⭐"].max() > 0:
-            df_ranking = df_ranking.sort_values(by="Desayunos Saludables ⭐", ascending=False)
+        if "Puntuación Total 🏆" in df_ranking.columns and df_ranking["Puntuación Total 🏆"].max() > 0:
+            # Ordenar primero por Puntuación Total, luego por Puntos de Calidad para desempate
+            df_ranking = df_ranking.sort_values(by=["Puntuación Total 🏆", "Puntos Calidad 🥇"], ascending=[False, False])
             
-            top_alumnos = df_ranking[df_ranking["Desayunos Saludables ⭐"] > 0].head(3).values.tolist()
+            top_alumnos = df_ranking[df_ranking["Puntuación Total 🏆"] > 0].head(3).values.tolist()
 
             col_p1, col_p2, col_p3 = st.columns(3)
             colores = ["#FFF176", "#E0E0E0", "#FFCC80"]
             medallas = ["🥇 1º Puesto (ORO)", "🥈 2º Puesto (PLATA)", "🥉 3º Puesto (BRONCE)"]
             cols_podio = [col_p1, col_p2, col_p3]
 
-            for idx, (nombre, puntos) in enumerate(top_alumnos):
+            for idx, item in enumerate(top_alumnos):
+                nombre = item[0]
+                d_cumplidos = item[1]
+                p_calidad = item[2]
+                p_total = item[3]
+
                 with cols_podio[idx]:
                     st.markdown(
                         f"""
                         <div style="background-color: {colores[idx]}; padding: 15px; border-radius: 10px; text-align: center; border: 2px solid #888;">
                             <h3>{medallas[idx]}</h3>
                             <h2>{nombre}</h2>
-                            <p style="font-size: 20px;"><b>{puntos} ⭐ Conseguidos</b></p>
+                            <p style="font-size: 18px; margin-bottom: 2px;"><b>{p_total} Puntos Totales</b></p>
+                            <p style="font-size: 14px; color: #444;">({d_cumplidos} ⭐ Días + {p_calidad} 🥇 Extra)</p>
                         </div>
                         """,
                         unsafe_allow_html=True,
